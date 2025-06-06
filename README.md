@@ -43,7 +43,7 @@ docs/
   │
   └── backup/        # 旧版文档备份（仅供参考）
 ```
-
+```bash
 更多详细信息，请查看 [文档目录](docs/README.md)。
 │   ├── esp32_example.c # ESP32示例应用
 │   └── esp32_adc_pwm_example.c # ESP32 ADC和PWM示例应用
