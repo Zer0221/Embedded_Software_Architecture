@@ -10,6 +10,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "project_config.h"
 
 /* 通用错误码定义 */
 #define DRIVER_OK            0    /**< 操作成功 */
@@ -18,6 +19,42 @@
 #define DRIVER_TIMEOUT      -3    /**< 操作超时 */
 #define DRIVER_INVALID_PARAM -4   /**< 无效参数 */
 #define DRIVER_NOT_SUPPORTED -5   /**< 不支持的操作 */
+
+/* 驱动类型定义 */
+typedef enum {
+    DRIVER_TYPE_GPIO = 0,        /**< GPIO驱动 */
+    DRIVER_TYPE_UART,            /**< UART驱动 */
+    DRIVER_TYPE_I2C,             /**< I2C驱动 */
+    DRIVER_TYPE_SPI,             /**< SPI驱动 */
+    DRIVER_TYPE_ADC,             /**< ADC驱动 */
+    DRIVER_TYPE_PWM,             /**< PWM驱动 */
+    DRIVER_TYPE_TIMER,           /**< 定时器驱动 */
+    DRIVER_TYPE_FLASH,           /**< 闪存驱动 */
+    DRIVER_TYPE_SDIO,            /**< SDIO驱动 */
+    DRIVER_TYPE_USB,             /**< USB驱动 */
+    DRIVER_TYPE_CAN,             /**< CAN驱动 */
+    DRIVER_TYPE_WATCHDOG,        /**< 看门狗驱动 */
+    DRIVER_TYPE_RTC,             /**< 实时时钟驱动 */
+    DRIVER_TYPE_DMA,             /**< DMA驱动 */
+    DRIVER_TYPE_CRYPTO,          /**< 加密驱动 */
+    DRIVER_TYPE_SENSOR,          /**< 传感器驱动 */
+    DRIVER_TYPE_DISPLAY,         /**< 显示驱动 */
+    DRIVER_TYPE_AUDIO,           /**< 音频驱动 */
+    DRIVER_TYPE_NETWORK,         /**< 网络驱动 */
+    DRIVER_TYPE_FILESYSTEM,      /**< 文件系统驱动 */
+    DRIVER_TYPE_POWER,           /**< 电源管理驱动 */
+    DRIVER_TYPE_CUSTOM,          /**< 自定义驱动 */
+    DRIVER_TYPE_MAX              /**< 驱动类型数量 */
+} driver_type_t;
+
+/* 驱动状态定义 */
+typedef enum {
+    DRIVER_STATUS_UNINITIALIZED = 0,  /**< 未初始化 */
+    DRIVER_STATUS_INITIALIZED,         /**< 已初始化 */
+    DRIVER_STATUS_RUNNING,             /**< 运行中 */
+    DRIVER_STATUS_SUSPENDED,           /**< 已挂起 */
+    DRIVER_STATUS_ERROR                /**< 错误状态 */
+} driver_status_t;
 
 /* 通用设备句柄定义 */
 typedef void* driver_handle_t;
@@ -69,5 +106,21 @@ typedef struct {
     driver_write_func_t   write;    /**< 写入函数 */
     driver_ioctl_func_t   ioctl;    /**< 控制函数 */
 } driver_ops_t;
+
+/**
+ * @brief 驱动信息结构体
+ */
+typedef struct {
+    const char*      name;          /**< 驱动名称 */
+    const char*      description;   /**< 驱动描述 */
+    const char*      version;       /**< 驱动版本 */
+    driver_type_t    type;          /**< 驱动类型 */
+    const void*      interface;     /**< 驱动接口 */
+    uint32_t         capabilities;  /**< 驱动能力标志 */
+    driver_status_t  status;        /**< 驱动状态 */
+    driver_init_func_t    init;     /**< 初始化函数 */
+    driver_deinit_func_t  deinit;   /**< 去初始化函数 */
+    void*            private_data;  /**< 私有数据 */
+#endif /* DRIVER_API_H */
 
 #endif /* DRIVER_API_H */

@@ -11,7 +11,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
 
-# 定义源代码目�?
+# 定义源代码目录
 set(SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(INCLUDE_DIR ${SOURCE_DIR}/include)
 set(INCLUDE_BASE_DIR ${SOURCE_DIR}/include/base)
@@ -28,16 +28,17 @@ set(SRC_DIR ${SOURCE_DIR}/src)
 set(APPLICATIONS_DIR ${SOURCE_DIR}/applications)
 set(TESTS_DIR ${SOURCE_DIR}/tests)
 
-# 预定义编译选项
-option(USE_FREERTOS "Use FreeRTOS" ON)
-option(USE_UCOS "Use uCOS" OFF)
-option(USE_THREADX "Use ThreadX" OFF)
-option(TARGET_ESP32 "Target ESP32 platform" ON)
-option(TARGET_STM32 "Target STM32 platform" OFF)
+# 平台选择选项 - 这些值会通过CMake缓存传递给project_config.h
+option(TARGET_STM32 "Target STM32 platform" ON)
+option(TARGET_ESP32 "Target ESP32 platform" OFF)
+option(TARGET_IT986XX "Target IT986XX platform" OFF)
 option(TARGET_FM33LC0XX "Target FM33LC0XX platform" OFF)
-option(ENABLE_TESTS "Enable tests" OFF)
-option(ENABLE_DEBUG "Enable debug output" ON)
-option(BUILD_DOCUMENTATION "Build documentation" OFF)
+
+# RTOS选择选项
+option(USE_RTOS_FREERTOS "Use FreeRTOS" ON)
+option(USE_RTOS_THREADX "Use ThreadX" OFF)
+option(USE_RTOS_UCOS "Use uCOS" OFF)
+option(USE_RTOS_NONE "No RTOS" OFF)
 
 # 应用程序选择
 option(APP_SENSOR "Build sensor application" ON)
@@ -46,39 +47,71 @@ option(APP_ESP32_ADC_PWM "Build ESP32 ADC PWM example" OFF)
 option(APP_FM33LC0XX_MATRIX "Build FM33LC0XX matrix display example" OFF)
 option(APP_SENSOR_NODE "Build sensor node application" OFF)
 
-# 确保只选择了一个平�?
-if((TARGET_ESP32 AND TARGET_STM32) OR 
-   (TARGET_ESP32 AND TARGET_FM33LC0XX) OR 
-   (TARGET_STM32 AND TARGET_FM33LC0XX))
-    message(FATAL_ERROR "只能选择一个目标平�?)
+# 功能模块选择
+option(ENABLE_ERROR_HANDLING "Enable error handling module" ON)
+option(ENABLE_DRIVER_MANAGER "Enable driver manager" ON)
+option(ENABLE_MEMORY_MANAGER "Enable memory manager" ON)
+option(ENABLE_DEVICE_TREE "Enable device tree" ON)
+option(ENABLE_MODULE_SUPPORT "Enable module support" ON)
+option(ENABLE_UNIT_TEST "Enable unit test framework" ON)
+
+# 确保只选择了一个平台
+if((TARGET_STM32 AND TARGET_ESP32) OR 
+   (TARGET_STM32 AND TARGET_IT986XX) OR 
+   (TARGET_STM32 AND TARGET_FM33LC0XX) OR
+   (TARGET_ESP32 AND TARGET_IT986XX) OR
+   (TARGET_ESP32 AND TARGET_FM33LC0XX) OR
+   (TARGET_IT986XX AND TARGET_FM33LC0XX))
+    message(FATAL_ERROR "只能选择一个目标平台")
 endif()
 
 # 确保只选择了一个RTOS
-if((USE_FREERTOS AND USE_UCOS) OR 
-   (USE_FREERTOS AND USE_THREADX) OR 
-   (USE_UCOS AND USE_THREADX))
-    message(FATAL_ERROR "只能选择一个RTOS")
+if((USE_RTOS_FREERTOS AND USE_RTOS_THREADX) OR 
+   (USE_RTOS_FREERTOS AND USE_RTOS_UCOS) OR 
+   (USE_RTOS_FREERTOS AND USE_RTOS_NONE) OR
+   (USE_RTOS_THREADX AND USE_RTOS_UCOS) OR
+   (USE_RTOS_THREADX AND USE_RTOS_NONE) OR
+   (USE_RTOS_UCOS AND USE_RTOS_NONE))
+    message(FATAL_ERROR "只能选择一个RTOS选项")
 endif()
 
-# 添加调试级别定义
-if(ENABLE_DEBUG)
-    add_definitions(-DDEBUG_LEVEL=DEBUG_LEVEL_ALL)
-else()
-    add_definitions(-DDEBUG_LEVEL=DEBUG_LEVEL_ERROR)
+# 根据选择生成编译定义
+if(TARGET_STM32)
+    add_definitions(-DTARGET_PLATFORM=PLATFORM_STM32)
+elseif(TARGET_ESP32)
+    add_definitions(-DTARGET_PLATFORM=PLATFORM_ESP32)
+elseif(TARGET_IT986XX)
+    add_definitions(-DTARGET_PLATFORM=PLATFORM_IT986XX)
+elseif(TARGET_FM33LC0XX)
+    add_definitions(-DTARGET_PLATFORM=PLATFORM_FM33LC0XX)
 endif()
 
-# 定义通用头文件目�?
+if(USE_RTOS_FREERTOS)
+    add_definitions(-DUSE_RTOS=RTOS_FREERTOS)
+elseif(USE_RTOS_THREADX)
+    add_definitions(-DUSE_RTOS=RTOS_THREADX)
+elseif(USE_RTOS_UCOS)
+    add_definitions(-DUSE_RTOS=RTOS_UCOS)
+elseif(USE_RTOS_NONE)
+    add_definitions(-DUSE_RTOS=RTOS_NONE)
+endif()
+
+# 定义通用头文件目录
 include_directories(
     ${INCLUDE_DIR}
+    ${INCLUDE_BASE_DIR}
+    ${INCLUDE_PROTOCOL_DIR}
+    ${INCLUDE_FEATURE_DIR}
+    ${INCLUDE_COMMON_DIR}
     ${PLATFORM_DIR}/mcu
     ${RTOS_DIR}/api
-    ${DRIVERS_DIR}  # 添加驱动目录，确保驱动互相引用时可以找到头文�?
+    ${DRIVERS_DIR}  # 添加驱动目录，确保驱动互相引用时可以找到头文件
 )
 
-# 根据目标平台添加额外的包含目录和定义
+# 根据目标平台添加额外的包含目录
 if(TARGET_ESP32)
-    # 配置ESP32特定的编译选项和包含目�?
-    # 注意：需要根据ESP-IDF的安装位置调�?
+    # 配置ESP32特定的编译选项和包含目录
+    # 注意：需要根据ESP-IDF的安装位置调整
     set(ESP32_IDF_PATH "$ENV{IDF_PATH}")
     if(ESP32_IDF_PATH)
         include_directories(
@@ -91,15 +124,13 @@ if(TARGET_ESP32)
             ${ESP32_IDF_PATH}/components/hal/include
             ${ESP32_IDF_PATH}/components/soc/include
         )
-        add_definitions(-DTARGET_ESP32)
-        add_definitions(-DCURRENT_PLATFORM=PLATFORM_ESP32)
     else()
         message(WARNING "ESP32_IDF_PATH not found. Please set it correctly.")
     endif()
 endif()
 
 if(TARGET_STM32)
-    # 配置STM32特定的编译选项和包含目�?
+    # 配置STM32特定的编译选项和包含目录
     # 注意：需要根据STM32 HAL库的安装位置调整
     set(STM32_HAL_PATH "$ENV{STM32_HAL_PATH}")
     if(STM32_HAL_PATH)
@@ -108,67 +139,106 @@ if(TARGET_STM32)
             ${STM32_HAL_PATH}/CMSIS/Device/ST/STM32F4xx/Include
             ${STM32_HAL_PATH}/CMSIS/Include
         )
-        add_definitions(-DTARGET_STM32)
-        add_definitions(-DCURRENT_PLATFORM=PLATFORM_STM32F4)
     else()
         message(WARNING "STM32_HAL_PATH not found. Please set it correctly.")
     endif()
 endif()
 
 if(TARGET_FM33LC0XX)
-    # 配置FM33LC0XX特定的编译选项和包含目�?
+    # 配置FM33LC0XX特定的编译选项和包含目录
     set(FM33LC0XX_SDK_PATH "$ENV{FM33LC0XX_SDK_PATH}")
     if(FM33LC0XX_SDK_PATH)
         include_directories(
             ${FM33LC0XX_SDK_PATH}/include
         )
-        add_definitions(-DTARGET_FM33LC0XX)
-        add_definitions(-DCURRENT_PLATFORM=PLATFORM_FM33LC0XX)
     else()
         message(WARNING "FM33LC0XX_SDK_PATH not found. Please set it correctly.")
     endif()
 endif()
 
 # 配置RTOS
-if(USE_FREERTOS)
-    add_definitions(-DUSE_FREERTOS)
-    add_definitions(-DCURRENT_RTOS=RTOS_FREERTOS)
-    
+if(USE_RTOS_FREERTOS)
     # 添加FreeRTOS源文件和包含目录
     set(FREERTOS_PATH "$ENV{FREERTOS_PATH}")
     if(FREERTOS_PATH)
         include_directories(
             ${FREERTOS_PATH}/include
-            ${FREERTOS_PATH}/portable/GCC/ARM_CM4F
             ${RTOS_DIR}/freertos
         )
         
-        # 可以添加FreeRTOS源文�?
+        # 可以添加FreeRTOS移植层包含目录
         if(TARGET_STM32)
-            set(PORT_PATH "${FREERTOS_PATH}/portable/GCC/ARM_CM4F")
+            include_directories(${FREERTOS_PATH}/portable/GCC/ARM_CM4F)
         elseif(TARGET_ESP32)
-            set(PORT_PATH "${FREERTOS_PATH}/portable/GCC/Xtensa_ESP32")
+            include_directories(${FREERTOS_PATH}/portable/GCC/Xtensa_ESP32)
         endif()
     else()
         message(WARNING "FREERTOS_PATH not found. Please set it correctly.")
     endif()
-else()
-    add_definitions(-DCURRENT_RTOS=RTOS_NONE)
 endif()
 
-# 功能模块选择
-option(ENABLE_ERROR_MODULE "Enable error handling module" ON)
-option(ENABLE_APP_FRAMEWORK "Enable application framework" ON)
+if(USE_RTOS_THREADX)
+    # 添加ThreadX源文件和包含目录
+    set(THREADX_PATH "$ENV{THREADX_PATH}")
+    if(THREADX_PATH)
+        include_directories(
+            ${THREADX_PATH}/common/inc
+            ${RTOS_DIR}/threadx
+        )
+    else()
+        message(WARNING "THREADX_PATH not found. Please set it correctly.")
+    endif()
+endif()
 
-# 收集源文�?
+# 功能模块定义
+if(ENABLE_ERROR_HANDLING)
+    add_definitions(-DCONFIG_ERROR_HANDLING_ENABLED=1)
+endif()
+
+if(ENABLE_DRIVER_MANAGER)
+    add_definitions(-DCONFIG_DRIVER_MANAGER_ENABLED=1)
+endif()
+
+if(ENABLE_MEMORY_MANAGER)
+    add_definitions(-DCONFIG_MEMORY_MANAGER_ENABLED=1)
+endif()
+
+if(ENABLE_DEVICE_TREE)
+    add_definitions(-DCONFIG_DEVICE_TREE_ENABLED=1)
+endif()
+
+if(ENABLE_MODULE_SUPPORT)
+    add_definitions(-DCONFIG_MODULE_SUPPORT=1)
+endif()
+
+if(ENABLE_UNIT_TEST)
+    add_definitions(-DCONFIG_UNIT_TEST_ENABLED=1)
+endif()
+
+# 收集源文件
 set(COMMON_SOURCES "")
 
-if(ENABLE_ERROR_MODULE)
-    list(APPEND COMMON_SOURCES ${SRC_DIR}/error.c)
+# 添加必要的核心源文件
+list(APPEND COMMON_SOURCES ${SRC_DIR}/error_handling.c)
+
+if(ENABLE_DRIVER_MANAGER)
+    list(APPEND COMMON_SOURCES ${SRC_DIR}/driver_manager.c)
 endif()
 
-if(ENABLE_APP_FRAMEWORK)
-    list(APPEND COMMON_SOURCES ${SRC_DIR}/app_framework.c)
+if(ENABLE_MEMORY_MANAGER)
+    list(APPEND COMMON_SOURCES ${SRC_DIR}/memory_manager.c)
+endif()
+
+if(ENABLE_DEVICE_TREE)
+    list(APPEND COMMON_SOURCES ${SRC_DIR}/device_tree.c)
+endif()
+
+if(ENABLE_MODULE_SUPPORT)
+    list(APPEND COMMON_SOURCES ${SRC_DIR}/module_support.c)
+endif()
+
+if(ENABLE_UNIT_TEST)
+    list(APPEND COMMON_SOURCES ${SRC_DIR}/unit_test.c)
 endif()
 
 # 基于目标平台选择合适的驱动文件
@@ -183,6 +253,12 @@ elseif(TARGET_STM32)
         ${DRIVERS_DIR}/base/*/stm32_*.c
         ${DRIVERS_DIR}/protocol/*/stm32_*.c
         ${DRIVERS_DIR}/feature/*/stm32_*.c
+    )
+elseif(TARGET_IT986XX)
+    file(GLOB_RECURSE PLATFORM_SPECIFIC_DRIVER_SOURCES 
+        ${DRIVERS_DIR}/base/*/it986xx_*.c
+        ${DRIVERS_DIR}/protocol/*/it986xx_*.c
+        ${DRIVERS_DIR}/feature/*/it986xx_*.c
     )
 elseif(TARGET_FM33LC0XX)
     file(GLOB_RECURSE PLATFORM_SPECIFIC_DRIVER_SOURCES 
